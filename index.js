@@ -55,7 +55,7 @@ class LessAliasesPlugin {
                 const len = aliaseNames.length;
                 for (let i = 0; i < len; i++) {
                     const key = `${prefix}${aliaseNames[i]}`;
-                    if (filename.indexOf(key) !== -1 || currentDirectory.indexOf(key) !== -1) {
+                    if (filename === key || filename.startsWith(`${key}/`)) {
                         return true;
                     }
                 }
