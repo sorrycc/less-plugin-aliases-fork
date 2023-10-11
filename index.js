@@ -22,6 +22,8 @@ function normalizePath(filename) {
     }
 }
 
+const MODULE_REQUEST_REGEX = /^[^?]*~/;
+
 const defaultLogger = {
     log: console.log,
     error: console.error
@@ -96,6 +98,24 @@ class LessAliasesPlugin {
             }
         }
         pluginManager.addFileManager(new AliasePlugin());
+
+        class StripTildePrefix extends less.FileManager {
+            supports(filename, currentDirectory) {
+                return true;
+            }
+            supportsSync(filename, currentDirectory) {
+                return true;
+            }
+            loadFile(filename, currentDirectory, options, enviroment, callback) {
+                let resolved = filename.startsWith('~') ? filename.replace(MODULE_REQUEST_REGEX, '') : filename;
+                return super.loadFile(resolved, currentDirectory, options, enviroment, callback);
+            }
+            loadFileSync(filename, currentDirectory, options, enviroment, callback) {
+                let resolved = filename.startsWith('~') ? filename.replace(MODULE_REQUEST_REGEX, '') : filename;
+                return super.loadFileSync(resolved, currentDirectory, options, enviroment, callback);
+            }
+        }
+        pluginManager.addFileManager(new StripTildePrefix());
     }
 }
 
