@@ -1,6 +1,6 @@
 {
-  "name": "less-plugin-aliases-fork",
-  "version": "1.0.3",
+  "name": "less-plugin-resolve",
+  "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
