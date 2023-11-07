@@ -1,4 +1,5 @@
 const enhancedResolve = require("enhanced-resolve");
+const path = require("path");
 
 /* eslint-disable class-methods-use-this */
 const trailingSlash = /[/\\]$/;
@@ -41,7 +42,7 @@ class LessAliasesPlugin {
         };
     }
     install(less, pluginManager) {
-        const { aliases } = this.options;
+        const { aliases, urlRewriteTargetPath } = this.options;
 
         const resolver = enhancedResolve.create({
             alias: aliases,
@@ -66,14 +67,14 @@ class LessAliasesPlugin {
             if (filename[0] === "/" || IS_NATIVE_WIN32_PATH.test(filename)) {
               return true;
             }
-      
+
             if (this.isPathAbsolute(filename)) {
               return false;
             }
-      
+
             return true;
           }
-      
+
           // Sync resolving is used at least by the `data-uri` function.
           // This file manager doesn't know how to do it, so let's delegate it
           // to the default file manager of Less.
@@ -100,14 +101,14 @@ class LessAliasesPlugin {
 
             return this.resolveRequests(context, [...new Set([request, filename])]);
         }
-      
+
           async resolveRequests(context, possibleRequests) {
             if (possibleRequests.length === 0) {
               return Promise.reject();
             }
-      
+
             let result;
-      
+
             try {
                 result = await resolve(context, possibleRequests[0]);
             } catch (error) {
@@ -119,28 +120,28 @@ class LessAliasesPlugin {
 
                 result = await this.resolveRequests(context, tailPossibleRequests);
             }
-      
+
             return result;
           }
-      
+
           async loadFile(filename, ...args) {
             let result;
-      
+
             try {
               if (IS_SPECIAL_MODULE_IMPORT.test(filename)) {
                 const error = new Error();
-      
+
                 error.type = "Next";
-      
+
                 throw error;
               }
-      
+
               result = await super.loadFile(filename, ...args);
             } catch (error) {
               if (error.type !== "File" && error.type !== "Next") {
                 return Promise.reject(error);
               }
-      
+
               try {
                 result = await this.resolveFilename(filename, ...args);
               } catch (webpackResolveError) {
@@ -148,18 +149,49 @@ class LessAliasesPlugin {
                   `Less resolver error:\n${error.message}\n\n` +
                   `Enhanced resolver error details:\n${webpackResolveError.details}\n\n` +
                   `Enhanced resolver error missing:\n${webpackResolveError.missing}\n\n`;
-      
+
                 return Promise.reject(error);
               }
-      
+
               return super.loadFile(result, ...args);
             }
-      
+
             return result;
           }
         }
-      
+
+        class UrlVisitor {
+          constructor(options) {
+            this.isReplacing = true;
+            this.isPreEvalVisitor = true;
+
+            this._options = options;
+            this._visitor = new less.visitors.Visitor(this);
+          }
+          run(root) {
+            return this._visitor.visit(root);
+          }
+          visitUrl(node, _visitArgs) {
+            const isRelative = node.value.value.startsWith('./') || node.value.value.startsWith('../');
+            if (isRelative) {
+              const filename = node._fileInfo && node._fileInfo.filename
+              if (filename) {
+                const assetPath = path.resolve(path.dirname(filename), node.value.value);
+                const relativePath = path.relative(
+                  path.dirname(urlRewriteTargetPath),
+                  assetPath
+                );
+                node.value.value = relativePath
+              }
+            }
+            return node
+          }
+        }
+
         pluginManager.addFileManager(new ResolvedFileManager());
+        if (urlRewriteTargetPath) {
+          pluginManager.addVisitor(new UrlVisitor());
+        }
     }
 }
 
