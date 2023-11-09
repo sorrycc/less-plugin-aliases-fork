@@ -181,7 +181,7 @@ class LessAliasesPlugin {
                   path.dirname(urlRewriteTargetPath),
                   assetPath
                 );
-                node.value.value = relativePath
+                node.value.value = winPath(relativePath)
               }
             }
             return node
@@ -194,5 +194,14 @@ class LessAliasesPlugin {
         }
     }
 }
+
+function winPath(path) {
+  const isExtendedLengthPath = /^\\\\\?\\/.test(path);
+  if (isExtendedLengthPath) {
+    return path;
+  }
+  return path.replace(/\\/g, '/');
+}
+
 
 module.exports = LessAliasesPlugin;
